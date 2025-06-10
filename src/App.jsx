@@ -3,6 +3,7 @@ import Chatbot from './components/Chatbot';
 import ModalResult from './components/ModalResult';
 import DraftViewer from './components/DraftViewer';
 import { validateLegalText, generateLegalDocument } from './api/validation';
+import openrouterModel from './api/openrouter';
 
 export default function App() {
   const [step, setStep] = useState('input'); // 'input' | 'result' | 'document'
@@ -19,6 +20,7 @@ export default function App() {
       setError('');
 
       const validationResult = await validateLegalText(conversation);
+      console.log('Validation Result:', validationResult); // Añadido para depuración
       const aiMessage = { role: 'assistant', content: validationResult.response };
       const updatedConversation = [...conversation, aiMessage];
       setConversation(updatedConversation);
@@ -31,7 +33,7 @@ export default function App() {
 
         setInputText(lastUserMessage);
         setResult(validationResult);
-        setStep('result');
+        // setStep('result'); // Eliminado para mantener el Chatbot visible
       }
 
       return validationResult.response;
@@ -87,14 +89,12 @@ export default function App() {
           </div>
         ) : (
           <>
-            {step === 'input' && (
-              <Chatbot
-                onSubmit={handleSubmit}
-                onValidationComplete={handleValidationComplete}
-                conversation={conversation}
-                onSendMessage={setConversation}
-              />
-            )}
+            <Chatbot
+              onSubmit={handleSubmit}
+              onValidationComplete={handleValidationComplete}
+              conversation={conversation}
+              onSendMessage={setConversation}
+            />
             
             {step === 'result' && result && (
               <ModalResult
