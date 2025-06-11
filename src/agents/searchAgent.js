@@ -72,7 +72,9 @@ class SearchAgent {
     }
 
     const terminosJuridicos = category; // Usar exactamente el output del classificationAgent
-    const encodedConsulta = encodeURIComponent(terminosJuridicos);
+    const terminosExtra = "jurisprudencia peruana doctrina legal";
+    const consultaCompleta = `${terminosJuridicos} ${terminosExtra}`;
+    const encodedConsulta = encodeURIComponent(consultaCompleta);
     const url = `${BASE_URL}?q=${encodedConsulta}&engine=google&location=Peru&hl=es&gl=pe&count=3&category=legal`;
 
     try {

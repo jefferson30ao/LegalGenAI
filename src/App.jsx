@@ -44,8 +44,8 @@ export default function App() {
         // Llamar al agente de clasificación
         const classificationResult = await classificationAgent(lastUserMessage);
 
-        // Llamar al agente de búsqueda
-        const searchResults = await searchAgent.run(lastUserMessage); // Usar la consulta del usuario para la búsqueda
+        // Llamar al agente de búsqueda usando la categoría clasificada
+        const searchResults = await searchAgent.run(classificationResult.category);
 
         // Llamar al agente explicativo, pasando los resultados de la búsqueda
         const explanationResult = await generateExplanation(classificationResult.category, searchResults.resultados);
