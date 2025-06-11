@@ -1,38 +1,50 @@
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  baseURL: 'https://api.deepseek.com',
-  apiKey: process.env.REACT_APP_DEEPSEEK_API_KEY || 'apiiiiiii',
-  dangerouslyAllowBrowser: true,
-});
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { RunnablePassthrough, RunnableSequence } from "@langchain/core/runnables";
+import { AIMessage, HumanMessage } from "@langchain/core/messages";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import openrouterModel from './openrouter';
 
 export async function validateLegalText(conversation) {
   try {
-    const messages = [
-      {
-        role: "system",
-        content: `Eres un asistente legal experto. Evalúa la conversación completa para determinar si tiene suficiente detalle legal.
-        Requisitos: fechas, partes involucradas, montos, descripción clara del problema.\n
-        - Si la conversación tiene suficiente información, responde exactamente "suficiente".\n
-        - Si falta información, responde en formato conversacional indicando qué falta.\n
-        Ejemplo: "Para analizar este caso necesito saber las fechas exactas y los nombres de las partes involucradas."`
-      },
-      ...conversation.map(msg => ({
-        role: msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.content
-      }))
-    ];
+    const systemMessage = `Eres un asistente legal experto. Evalúa la conversación completa para determinar si tiene suficiente detalle legal.
+        Requisitos: fechas, partes involucradas, montos, descripción clara del problema.
+        - Si la conversación tiene suficiente información, responde exactamente, sin punto final, "suficiente"
+        - Si falta información, responde en formato conversacional indicando qué falta.
+        Ejemplo: "Para analizar este caso necesito saber las fechas exactas y los nombres de las partes involucradas."`;
 
-    const completion = await openai.chat.completions.create({
-      messages,
-      model: "deepseek-chat",
+    const messages = conversation.map(msg => {
+      if (msg.role === 'user') {
+        return new HumanMessage(msg.content);
+      } else {
+        return new AIMessage(msg.content);
+      }
     });
 
-    const response = completion.choices[0].message.content;
-    console.log('Respuesta del modelo:', response);
+    const prompt = ChatPromptTemplate.fromMessages([
+      ["system", systemMessage],
+      ["placeholder", "{chat_history}"],
+      ["human", "{input}"],
+    ]);
+
+    const chain = RunnableSequence.from([
+      {
+        input: (input) => input.input,
+        chat_history: (input) => input.chat_history,
+      },
+      prompt,
+      openrouterModel,
+      new StringOutputParser(),
+    ]);
+
+    const response = await chain.invoke({
+      input: messages[messages.length - 1].content, // Last message is the current input
+      chat_history: messages.slice(0, -1), // All but the last message is chat history
+    });
+
+    console.log('Respuesta del modelo (cadena):', response);
 
     return {
-      response,
+      response: response,
       isValid: response.trim().toLowerCase() === "suficiente",
       category: "N/A",
       explanation: response,

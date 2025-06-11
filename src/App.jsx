@@ -3,15 +3,20 @@ import Chatbot from './components/Chatbot';
 import ModalResult from './components/ModalResult';
 import DraftViewer from './components/DraftViewer';
 import { validateLegalText, generateLegalDocument } from './api/validation';
+import openrouterModel from './api/openrouter';
+import classificationAgent from './agents/classificationAgent';
+import { generateExplanation } from './agents/explanatoryAgent';
+import generateDraft from './agents/draftGenerationAgent'; // Importar el agente de generación de borrador
 
 export default function App() {
-  const [step, setStep] = useState('input'); // 'input' | 'result' | 'document'
+  const [step, setStep] = useState('input'); // 'input' | 'result' | 'draft'
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
-  const [document, setDocument] = useState('');
+  const [explanation, setExplanation] = useState('');
   const [conversation, setConversation] = useState([]);
+  const [draft, setDraft] = useState(''); // Estado para almacenar el borrador generado
 
   const handleSubmit = async (conversation) => {
     try {
@@ -19,6 +24,7 @@ export default function App() {
       setError('');
 
       const validationResult = await validateLegalText(conversation);
+      console.log('Validation Result:', validationResult); // Añadido para depuración
       const aiMessage = { role: 'assistant', content: validationResult.response };
       const updatedConversation = [...conversation, aiMessage];
       setConversation(updatedConversation);
@@ -30,8 +36,21 @@ export default function App() {
           .pop()?.content || '';
 
         setInputText(lastUserMessage);
-        setResult(validationResult);
-        setStep('result');
+
+        // Llamar al agente de clasificación
+        const classificationResult = await classificationAgent(lastUserMessage);
+
+         // Llamar al agente explicativo
+         const explanationResult = await generateExplanation(classificationResult.category, "Placeholder search results");
+
+        // Actualizar el estado con la categoría legal
+        setResult({
+          ...validationResult,
+          category: classificationResult.category,
+        });
+
+        setExplanation(explanationResult.explanation);
+        // setStep('result'); // Eliminado para mantener el Chatbot visible
       }
 
       return validationResult.response;
@@ -49,13 +68,15 @@ export default function App() {
   };
 
   const handleGenerateDocument = async () => {
+    console.log('handleGenerateDocument se ha ejecutado.');
     try {
       setIsLoading(true);
-      const { content } = await generateLegalDocument(inputText, result.category);
-      setDocument(content);
-      setStep('document');
+      // Llamar al agente de generación de borrador
+      const draftResult = await generateDraft(result.category, inputText);
+      setDraft(draftResult);
+      setStep('draft'); // Cambiar el estado a 'draft'
     } catch (err) {
-      setError('Error al generar el documento. Por favor intente nuevamente.');
+      setError('Error al generar el borrador. Por favor intente nuevamente.');
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -66,8 +87,8 @@ export default function App() {
     setStep('input');
     setInputText('');
     setResult(null);
-    setDocument('');
     setError('');
+    setDraft(''); // Limpiar el estado del borrador
   };
 
   return (
@@ -87,7 +108,7 @@ export default function App() {
           </div>
         ) : (
           <>
-            {step === 'input' && (
+            {step !== 'document' && step !== 'draft' && ( // Mostrar el Chatbot solo si no estamos en 'document' o 'draft'
               <Chatbot
                 onSubmit={handleSubmit}
                 onValidationComplete={handleValidationComplete}
@@ -99,13 +120,13 @@ export default function App() {
             {step === 'result' && result && (
               <ModalResult
                 category={result.category}
-                explanation={result.explanation}
-                onContinue={handleGenerateDocument}
+                explanation={explanation}
                 onClose={handleReset}
+                onContinue={handleGenerateDocument}
               />
             )}
 
-            {step === 'document' && <DraftViewer content={document} />}
+            {step === 'draft' && <DraftViewer content={draft} />} {/* Mostrar el componente DraftViewer con el borrador */}
           </>
         )}
       </div>

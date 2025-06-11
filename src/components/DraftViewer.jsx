@@ -1,4 +1,21 @@
+import { useState } from 'react';
+import { qaAgent } from '../agents/qaAgent';
+import QaAnalysisViewer from './QaAnalysisViewer';
+
 export default function DraftViewer({ content }) {
+  const [qaAnalysis, setQaAnalysis] = useState(null);
+  const [isLoadingQa, setIsLoadingQa] = useState(false);
+
+  const handleQaReview = async () => {
+    if (!content) {
+      alert("No hay documento para revisar.");
+      return;
+    }
+    setIsLoadingQa(true);
+    const analysis = await qaAgent(content);
+    setQaAnalysis(analysis);
+    setIsLoadingQa(false);
+  };
   return (
     <div className="max-w-4xl mx-auto bg-white p-8 shadow-lg">
       <div className="font-serif text-gray-800">
@@ -19,6 +36,23 @@ export default function DraftViewer({ content }) {
           )}
         </div>
       </div>
+      {content && (
+        <div className="mt-6 text-center">
+          <button
+            onClick={handleQaReview}
+            disabled={isLoadingQa}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          >
+            {isLoadingQa ? 'Revisando...' : 'Revisar Documento (QA)'}
+          </button>
+        </div>
+      )}
+
+      {qaAnalysis && (
+        <div className="mt-8">
+          <QaAnalysisViewer analysis={qaAnalysis} />
+        </div>
+      )}
     </div>
   );
 }
