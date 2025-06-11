@@ -80,8 +80,13 @@ export default function App() {
     console.log('handleGenerateDocument se ha ejecutado.');
     try {
       setIsLoading(true);
-      // Llamar al agente de generación de borrador
-      const draftResult = await generateDraft(result.category, inputText);
+      // Convertir la conversación a texto plano
+      const conversationText = conversation
+        .map(msg => `${msg.role === 'user' ? 'Usuario' : 'Asistente'}: ${msg.content}`)
+        .join('\n\n');
+      
+      // Llamar al agente de generación de borrador con toda la conversación
+      const draftResult = await generateDraft(result.category, conversationText);
       setDraft(draftResult);
       setStep('draft'); // Cambiar el estado a 'draft'
     } catch (err) {
