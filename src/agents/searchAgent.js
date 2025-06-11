@@ -1,70 +1,147 @@
 // src/agents/searchAgent.js
 // Agente de Búsqueda/Recuperación de Información Legal
 
-// Importaciones necesarias de LangChain
-// Por ahora, solo importamos lo básico para la estructura
-//import { LLMChain } from "langchain/chains";
-//import { PromptTemplate } from "langchain/prompts";
+// Importaciones necesarias
+// No se requiere LangChain para esta implementación directa de API
+// import { LLMChain } from "langchain/chains";
+// import { PromptTemplate } from "langchain/prompts";
 
-// Definición del Prompt Template para la búsqueda de información legal
-const promptTemplate = `
-  Eres un asistente legal experto en la búsqueda y recuperación de información legal.
-  Tu objetivo es encontrar información relevante basada en la consulta del usuario.
+// Cargar variables de entorno
+// require('dotenv').config(); // No es necesario si ya se carga globalmente en el entry point
 
-  Consulta del usuario: {consulta}
+const SEARCH_API_KEY = process.env.REACT_APP_SEARCH_API_KEY;
+const BASE_URL = 'http://localhost:3001/api/search'; // Apuntar al proxy local
 
-  Instrucciones:
-  1. Analiza la consulta del usuario para identificar los términos legales clave.
-  2. Utiliza estos términos para buscar información relevante en bases de datos legales (API externa - NO IMPLEMENTADA AÚN).
-  3. Devuelve un resumen de la información encontrada, incluyendo las fuentes (API externa - NO IMPLEMENTADA AÚN).
-  4. Si no encuentras información relevante, devuelve un mensaje indicando que no se encontraron resultados.
+// Función mejorada para extraer referencias legales
+const extraerReferenciasLegales = (texto) => {
+  const referencias = [];
+  
+  // Detectar leyes, decretos y resoluciones con formato completo
+  const normas = texto.match(/(Ley|Decreto Legislativo|Decreto Supremo|Resolución)\s(N°?\s?\d+[-]?\d*[\/]?\d*)/gi) || [];
+  normas.forEach(norma => {
+    const [tipo, numero] = norma.split(/\s(.+)/);
+    referencias.push({
+      tipo: tipo.toLowerCase().includes("ley") ? "ley" : tipo.toLowerCase().includes("decreto") ? "decreto" : "resolucion",
+      detalle: norma.trim(),
+      referencia_completa: `${tipo.trim()} ${numero.trim()}`
+    });
+  });
+  
+  // Detectar artículos simples (Artículo 5)
+  const articulosSimples = texto.match(/Art(ículo)?\.?\s\d+/gi) || [];
+  articulosSimples.forEach(art => referencias.push({
+    tipo: "articulo",
+    detalle: art.trim()
+  }));
+  
+  // Detectar artículos con referencia (Artículo 5 de la Ley 123)
+  const articulosCompletos = texto.match(/Art(ículo)?\.?\s\d+\sde\s(Ley|D\.?L\.?|D\.?S\.?)\sN°?\s?\d+/gi) || [];
+  articulosCompletos.forEach(art => referencias.push({
+    tipo: "articulo_con_referencia",
+    detalle: art.trim(),
+    referencia_completa: art.trim()
+  }));
+  
+  // Detectar jurisprudencia (expedientes y sentencias)
+  const jurisprudencia = texto.match(/(Exp\.|Expediente|Caso|Sentencia)\sN°?\s?\d+[-]?\d*[\/]?\d*/gi) || [];
+  jurisprudencia.forEach(jur => referencias.push({
+    tipo: "jurisprudencia",
+    detalle: jur.trim(),
+    referencia_completa: jur.trim()
+  }));
+  
+  return referencias;
+};
 
-  Respuesta:
-`;
-
-// Estructura básica del agente
 class SearchAgent {
   constructor() {
-    //this.prompt = PromptTemplate.fromTemplate(promptTemplate);
-    //this.chain = new LLMChain({ llm: /* Modelo LLM aquí */, prompt: this.prompt });
+    if (!SEARCH_API_KEY) {
+      console.error("SEARCH_API_KEY no está definida en las variables de entorno.");
+      throw new Error("SEARCH_API_KEY no configurada.");
+    }
   }
 
   async run(consulta) {
-    try {
-      // Aquí se realizarían las llamadas a las APIs externas (NO IMPLEMENTADO AÚN)
-      //const resultados = await this.chain.call({ consulta });
-      //const resultados = "Resultados de búsqueda simulados - API NO IMPLEMENTADA"; // Placeholder
-
-      // Manejo de estados de carga (simulado)
-      // Puedes usar este estado para mostrar un indicador de carga en la interfaz de usuario
-      const isLoading = false;
-
-      // Devolver un placeholder para los resultados de búsqueda
+    if (!consulta) {
       return {
-        resultados: "Resultados de búsqueda simulados - API NO IMPLEMENTADA", // Placeholder
-        fuentes: "Fuentes simuladas - API NO IMPLEMENTADA", // Placeholder
-        isLoading: isLoading,
+        resultados: "No se proporcionó una consulta para la búsqueda.",
+        fuentes: [],
+        referencias_legales: [],
+        isLoading: false,
       };
+    }
+
+    const terminosJuridicos = `${consulta.trim()} jurisprudencia peruana doctrina legal`;
+    const encodedConsulta = encodeURIComponent(terminosJuridicos);
+    const url = `${BASE_URL}?q=${encodedConsulta}&engine=google&location=Peru&hl=es&gl=pe&count=3&category=legal`;
+
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'X-Subscription-Token': SEARCH_API_KEY,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error("Error 401: API Key incorrecta o no autorizada.");
+        } else if (res.status === 429) {
+          throw new Error("Error 429: Límite de uso de la API superado.");
+        } else {
+          throw new Error(`Error HTTP: ${res.status} - ${res.statusText}`);
+        }
+      }
+
+      const data = await res.json();
+      const organicResults = data.organic_results;
+
+      if (organicResults && organicResults.length > 0) {
+        // Procesar y filtrar resultados por relevancia legal
+        const resultadosConReferencias = organicResults.map(result => {
+          const referencias = extraerReferenciasLegales(`${result.title} ${result.snippet}`);
+          return {
+            title: result.title,
+            link: result.link,
+            snippet: result.snippet,
+            referencias_legales: referencias,
+            relevancia_juridica: referencias.length > 0 ? "alta" : "media"
+          };
+        });
+
+        // Ordenar por relevancia (primero los que tienen referencias legales)
+        const resultadosOrdenados = resultadosConReferencias.sort((a, b) =>
+          b.relevancia_juridica.localeCompare(a.relevancia_juridica)
+        );
+
+        // Formatear respuesta final
+        return {
+          resultados: resultadosOrdenados.map(res =>
+            `Título: ${res.title}\nResumen: ${res.snippet}\nReferencias: ${res.referencias_legales.map(ref => ref.detalle).join(', ')}`
+          ).join('\n\n---\n\n'),
+          fuentes: resultadosOrdenados.map(res => ({ title: res.title, link: res.link })),
+          referencias_legales: resultadosOrdenados.flatMap(res => res.referencias_legales),
+          isLoading: false,
+        };
+      } else {
+        return {
+          resultados: "No se encontraron resultados relevantes para su consulta.",
+          fuentes: [],
+          referencias_legales: [],
+          isLoading: false,
+        };
+      }
+
     } catch (error) {
       console.error("Error al ejecutar el agente de búsqueda:", error);
       return {
-        resultados: "Error al ejecutar la búsqueda. Por favor, inténtalo de nuevo.",
+        resultados: `Error al ejecutar la búsqueda: ${error.message}. Por favor, inténtalo de nuevo.`,
         fuentes: [],
+        referencias_legales: [],
         isLoading: false,
       };
     }
   }
 }
-
-// Documentación:
-// 1. Las llamadas a las APIs externas se integrarán en la función 'run'.
-// 2. Se utilizarán las APIs para buscar información legal relevante basada en la consulta del usuario.
-// 3. Los resultados de las APIs se formatearán y se devolverán en el objeto 'resultados'.
-// 4. Se manejarán los errores y los estados de carga para proporcionar una mejor experiencia de usuario.
-
-// Preparación para la integración con el flujo principal:
-// 1. Este agente se puede importar y utilizar en el flujo principal de la aplicación.
-// 2. La función 'run' se puede llamar con la consulta del usuario como argumento.
-// 3. El objeto de respuesta contendrá los resultados de la búsqueda, las fuentes y el estado de carga.
 
 export default SearchAgent;
