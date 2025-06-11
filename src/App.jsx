@@ -5,6 +5,7 @@ import DraftViewer from './components/DraftViewer';
 import { validateLegalText, generateLegalDocument } from './api/validation';
 import openrouterModel from './api/openrouter';
 import classificationAgent from './agents/classificationAgent';
+import SearchAgent from './agents/searchAgent'; // Importar el agente de búsqueda
 import { generateExplanation } from './agents/explanatoryAgent';
 import generateDraft from './agents/draftGenerationAgent'; // Importar el agente de generación de borrador
 
@@ -17,6 +18,9 @@ export default function App() {
   const [explanation, setExplanation] = useState('');
   const [conversation, setConversation] = useState([]);
   const [draft, setDraft] = useState(''); // Estado para almacenar el borrador generado
+
+  // Instanciar el SearchAgent
+  const searchAgent = new SearchAgent();
 
   const handleSubmit = async (conversation) => {
     try {
@@ -40,13 +44,18 @@ export default function App() {
         // Llamar al agente de clasificación
         const classificationResult = await classificationAgent(lastUserMessage);
 
-         // Llamar al agente explicativo
-         const explanationResult = await generateExplanation(classificationResult.category, "Placeholder search results");
+        // Llamar al agente de búsqueda usando la categoría clasificada
+        const searchResults = await searchAgent.run(classificationResult.category);
 
-        // Actualizar el estado con la categoría legal
+        // Llamar al agente explicativo, pasando los resultados de la búsqueda
+        const explanationResult = await generateExplanation(classificationResult.category, searchResults.resultados);
+
+        // Actualizar el estado con la categoría legal y los resultados de búsqueda
         setResult({
           ...validationResult,
           category: classificationResult.category,
+          searchResults: searchResults.resultados, // Guardar los resultados de búsqueda
+          searchSources: searchResults.fuentes, // Guardar las fuentes de búsqueda
         });
 
         setExplanation(explanationResult.explanation);
