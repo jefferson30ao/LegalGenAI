@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { qaAgent } from '../agents/qaAgent';
 import QaAnalysisViewer from './QaAnalysisViewer';
 
@@ -25,7 +26,9 @@ export default function DraftViewer({ content }) {
         
         <div className="space-y-4">
           {content ? (
-            <div className="whitespace-pre-line">{content}</div>
+            <div className="whitespace-pre-line">
+              <ReactMarkdown>{content}</ReactMarkdown>
+            </div>
           ) : (
             <div className="text-center py-12 text-gray-500">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
