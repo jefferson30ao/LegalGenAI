@@ -8,7 +8,7 @@ export async function validateLegalText(conversation) {
   try {
     const systemMessage = `Eres un asistente legal experto. Evalúa la conversación completa para determinar si tiene suficiente detalle legal.
         Requisitos: fechas, partes involucradas, montos, descripción clara del problema.
-        - Si la conversación tiene suficiente información, responde exactamente "suficiente".
+        - Si la conversación tiene suficiente información, responde exactamente, sin punto final, "suficiente"
         - Si falta información, responde en formato conversacional indicando qué falta.
         Ejemplo: "Para analizar este caso necesito saber las fechas exactas y los nombres de las partes involucradas."`;
 
