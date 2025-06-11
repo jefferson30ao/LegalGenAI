@@ -61,8 +61,8 @@ class SearchAgent {
     }
   }
 
-  async run(consulta) {
-    if (!consulta) {
+  async run(category) {
+    if (!category) {
       return {
         resultados: "No se proporcionó una consulta para la búsqueda.",
         fuentes: [],
@@ -71,7 +71,7 @@ class SearchAgent {
       };
     }
 
-    const terminosJuridicos = `${consulta.trim()} jurisprudencia peruana doctrina legal`;
+    const terminosJuridicos = category; // Usar exactamente el output del classificationAgent
     const encodedConsulta = encodeURIComponent(terminosJuridicos);
     const url = `${BASE_URL}?q=${encodedConsulta}&engine=google&location=Peru&hl=es&gl=pe&count=3&category=legal`;
 
