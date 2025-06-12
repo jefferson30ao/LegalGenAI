@@ -106,23 +106,25 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">Asistente Legal AI</h1>
-        
+    <div className="min-h-screen flex flex-col bg-background-dark text-text-primary-dark">
+      <header className="flex-shrink-0 py-4 px-4 sm:px-6 bg-surface-dark shadow-md">
+        <h1 className="text-2xl sm:text-3xl font-bold text-center text-text-primary-dark">Asistente Legal AI</h1>
+      </header>
+
+      <main className="flex-1 flex flex-col relative"> {/* Quitar overflow-hidden, añadir relative */}
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-800 text-white px-4 py-3 rounded-md mx-4 mt-4 z-20"> {/* Añadir z-20 para que esté por encima */}
             {error}
           </div>
         )}
 
         {isLoading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="flex justify-center items-center flex-1">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-accent-blue"></div>
           </div>
         ) : (
-          <>
-            {step !== 'document' && step !== 'draft' && ( // Mostrar el Chatbot solo si no estamos en 'document' o 'draft'
+          <div className="flex-1 flex flex-col"> {/* Nuevo contenedor para Chatbot/DraftViewer */}
+            {step === 'input' && (
               <Chatbot
                 onSubmit={handleSubmit}
                 onValidationComplete={handleValidationComplete}
@@ -140,10 +142,10 @@ export default function App() {
               />
             )}
 
-            {step === 'draft' && <DraftViewer content={draft} />} {/* Mostrar el componente DraftViewer con el borrador */}
-          </>
+            {step === 'draft' && <DraftViewer content={draft} />}
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
