@@ -13,7 +13,10 @@ export default function Chatbot({ onSubmit, onValidationComplete, conversation, 
   };
 
   useEffect(() => {
-    scrollToBottom();
+    const timer = setTimeout(() => {
+      scrollToBottom();
+    }, 100); // Pequeño retardo para asegurar que el DOM se ha actualizado
+    return () => clearTimeout(timer);
   }, [conversation]);
 
   const adjustTextareaHeight = () => {
@@ -102,7 +105,7 @@ export default function Chatbot({ onSubmit, onValidationComplete, conversation, 
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 pb-32">
+      <div className="flex-1 overflow-y-auto px-4 py-6 pb-60">
         <div className="max-w-4xl mx-auto space-y-6">
           {conversation.length === 0 ? (
             <div className="text-center py-12">

@@ -108,7 +108,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-background-dark text-text-primary-dark">
       <header className="flex-shrink-0 py-4 px-4 sm:px-6 bg-surface-dark shadow-md">
-        <h1 className="text-2xl sm:text-3xl font-bold text-center text-text-primary-dark">Asistente Legal AI</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-center text-text-primary-dark">LegalGenAI</h1>
       </header>
 
       <main className="flex-1 flex flex-col relative"> {/* Quitar overflow-hidden, añadir relative */}
