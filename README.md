@@ -14,8 +14,6 @@ npm start
 npm run build
 
 ## Tareas pendientes
- -evaluar la opción de estructura con espacios del documento
- -botón de guardar documento
  -evaluar la opción de que el borrador sea editable
  -mejorar interfaz
 
