@@ -59,7 +59,7 @@ export default function App() {
         });
 
         setExplanation(explanationResult.explanation);
-        // setStep('result'); // Eliminado para mantener el Chatbot visible
+        setStep('result');
       }
 
       return validationResult.response;
@@ -70,10 +70,6 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleValidationComplete = () => {
-    setStep('result');
   };
 
   const handleGenerateDocument = async () => {
@@ -127,7 +123,6 @@ export default function App() {
             {step === 'input' && (
               <Chatbot
                 onSubmit={handleSubmit}
-                onValidationComplete={handleValidationComplete}
                 conversation={conversation}
                 onSendMessage={setConversation}
               />
