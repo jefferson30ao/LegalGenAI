@@ -55,7 +55,35 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
+// Endpoint del proxy para la GAN
+app.get('/api/gan/generate', async (req, res) => {
+  const GAN_URL = 'http://localhost:8000/generate';
+
+  try {
+    console.log(`Proxy GAN: Realizando fetch a ${GAN_URL}`);
+    const apiRes = await fetch(GAN_URL);
+    console.log(`Proxy GAN: Respuesta recibida de ${GAN_URL}. Status: ${apiRes.status}`);
+    console.log('Proxy GAN: Cabeceras de respuesta de la GAN:', JSON.stringify(Object.fromEntries(apiRes.headers.entries()), null, 2));
+
+    if (!apiRes.ok) {
+      const errorBody = await apiRes.text();
+      console.error(`Error de la GAN (${GAN_URL}):`, apiRes.status, errorBody);
+      return res.status(apiRes.status).json({ error: `Error al generar imagen GAN desde ${GAN_URL}`, details: errorBody });
+    }
+
+    const imageBuffer = await apiRes.buffer();
+    console.log(`Proxy GAN: Buffer de imagen obtenido, tamaño: ${imageBuffer.length}. Estableciendo Content-Type a image/png.`);
+    res.set('Content-Type', 'image/png');
+    res.send(imageBuffer);
+  } catch (error) {
+    console.error('Error al conectar con la GAN:', error);
+    res.status(500).json({ error: 'Error interno del servidor al conectar con la GAN' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Proxy server listening on port ${PORT}`);
-  console.log(`Accede al proxy en: http://localhost:${PORT}/api/search`);
+  console.log(`Endpoints disponibles:`);
+  console.log(`- Búsqueda: http://localhost:${PORT}/api/search`);
+  console.log(`- GAN: http://localhost:${PORT}/api/gan/generate`);
 });
