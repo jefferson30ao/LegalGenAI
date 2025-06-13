@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -9,8 +9,53 @@ export default function DraftViewer({ content }) {
   const [qaAnalysis, setQaAnalysis] = useState(null);
   const [isLoadingQa, setIsLoadingQa] = useState(false);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const [ganImage, setGanImage] = useState(null);
+  const [isLoadingGan, setIsLoadingGan] = useState(false);
+  const [ganError, setGanError] = useState(null);
   const contentRef = useRef(null);
 
+  // useEffect para cargar la imagen GAN, modificado para depuración
+  useEffect(() => {
+    const loadGanImage = async () => {
+      try {
+        setIsLoadingGan(true);
+        setGanError(null);
+        console.log('DraftViewer: [DEBUG] Iniciando carga de imagen GAN (useEffect modificado)');
+        const proxyGanUrl = 'http://localhost:3001/api/gan/generate';
+        console.log(`DraftViewer: [DEBUG] Fetching GAN image from: ${proxyGanUrl}`);
+        const response = await fetch(proxyGanUrl);
+        console.log('DraftViewer: [DEBUG] Respuesta de fetch GAN recibida', response);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('DraftViewer: [DEBUG] Error en respuesta GAN:', response.status, errorText);
+          const errorData = JSON.parse(errorText || '{}');
+          throw new Error(errorData.error || `Error al cargar imagen GAN: ${response.status}`);
+        }
+        const blob = await response.blob();
+        console.log('DraftViewer: [DEBUG] Blob de imagen GAN creado', blob);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          console.log('DraftViewer: [DEBUG] FileReader onloadend - Data URL:', reader.result ? reader.result.substring(0, 100) + '...' : 'null');
+          setGanImage(reader.result);
+        }
+        reader.onerror = () => {
+          console.error('DraftViewer: [DEBUG] FileReader error', reader.error);
+          setGanError('Error al leer la imagen con FileReader.');
+        }
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.error('GAN Error [DEBUG]:', error);
+        setGanError(error.message);
+      } finally {
+        setIsLoadingGan(false);
+      }
+    };
+    
+    console.log('DraftViewer: [DEBUG] useEffect para GAN se está ejecutando. Llamando a loadGanImage() independientemente de content.');
+    loadGanImage(); // Llamar siempre para depurar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Ejecutar solo una vez al montar para esta prueba
+ 
   const handleDownloadPdf = async () => {
     if (!contentRef.current) {
       alert("No hay contenido para exportar a PDF.");
@@ -134,6 +179,32 @@ export default function DraftViewer({ content }) {
           )}
         </div>
       </div>
+
+      {/* GAN Image section */}
+      {content && ganImage && (
+        <div className="mt-4 mx-6 p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-md rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+            Visualización generada por IA
+          </h3>
+          <div className="flex justify-center">
+            <img
+              src={ganImage}
+              alt="Visualización generada por GAN"
+              className="max-w-full h-auto rounded-lg shadow-inner border border-gray-100 dark:border-gray-600"
+            />
+          </div>
+        </div>
+      )}
+      {isLoadingGan && (
+        <div className="mt-4 mx-6 p-4 text-center text-gray-500 dark:text-gray-400">
+          Generando visualización...
+        </div>
+      )}
+      {ganError && (
+        <div className="mt-4 mx-6 p-4 text-center text-red-500 dark:text-red-400">
+          Error al cargar visualización: {ganError}
+        </div>
+      )}
 
       {/* Action buttons */}
       {content && (
